@@ -35,19 +35,21 @@ var tart = require('tart');
 
 var sponsor = tart.minimal();
 
-var makeAliceBeh = function makeAliceBeh(charlie) {
-    var aliceReportBeh = function aliceReportBeh(message) {
+
+var aliceReport = function aliceReport(charlie) {
+    return function aliceReportBeh(message) {
         var alice = this.self;
         console.log('alice received response from charlie');
         console.log('message.alice === alice:', message.alice === alice);
         console.log('message.charlie === charlie:', message.charlie === charlie);
     };
-    return function aliceBeh(message) {
-        var alice = this.self;
-        // send charlie everything alice knows
-        message.charlie({alice: alice, charlie: message.charlie});
-        this.behavior = aliceReportBeh;
-    };
+};
+
+var aliceBeh = function aliceBeh(message) {
+    var alice = this.self;
+    // send charlie everything alice knows
+    message.charlie({alice: alice, charlie: message.charlie});
+    this.behavior = aliceReport(message.charlie);
 };
 
 var charlieBeh = function charlieBeh(message) {
@@ -58,6 +60,7 @@ var charlieBeh = function charlieBeh(message) {
     console.log('message.charlie === charlie:', message.charlie === charlie);
 };
 
+var alice = sponsor(aliceBeh);
 var charlie = sponsor(charlieBeh);
 
 var membraneBehs = membrane.behaviors();
@@ -65,8 +68,6 @@ var revokeMembrane = sponsor(membraneBehs.revokeBeh);
 
 var charlieProxyBeh = membraneBehs.proxy(charlie);
 var charlieProxy = sponsor(charlieProxyBeh);
-
-var alice = sponsor(makeAliceBeh(charlieProxy));
 
 // get alice to send message to charlie and report a response
 alice({charlie: charlieProxy});

@@ -13,8 +13,7 @@
     "tart-tracing": "0.1.4"
   },
   "dependencies": {
-    "tart": "0.1.5",
-    "tart-revocable": "0.1.6"
+    "tart": "0.1.5"
   },
   "repository": {
     "type": "git",

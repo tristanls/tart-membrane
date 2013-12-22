@@ -30,13 +30,131 @@ OTHER DEALINGS IN THE SOFTWARE.
 */
 "use strict";
 
-var revocable = require('tart-revocable');
+var assert = require('assert');
 
 var membrane = module.exports;
 
+var isUndefinedOrNull = function isUndefinedOrNull(value) {
+    return value === null || value === undefined;
+};
+
 membrane.behaviors = function behaviors() {
 
+    var inboundProxies = []; // proxies for actors "inside"
+    var inboundProxied = []; // the "inside" actors that have a proxy
+    var outboundProxies = []; // proxies for actors "outside"
+    var outboundProxied = []; // the "outside" actors that have a proxy
     var revokeBehList = [];
+
+    var rewriteInbound = function rewriteInbound(sponsor, message) {
+        if (isUndefinedOrNull(message)) {
+            return message;
+        }
+
+        if (typeof message === 'string' || typeof message === 'number') {
+            return message;
+        }
+
+        if (Array.isArray(message)) {
+            for (var i = 0; i < message.length; i++) {
+                message.splice(i, 1, rewriteInbound(sponsor, message[i]));
+            }
+            return message;
+        }
+
+        if (typeof message === 'object') {
+            var rewriteByCopy = false;
+            if (Object.isFrozen(message)) {
+                rewriteByCopy = true;
+            }
+            
+            if (!rewriteByCopy) {
+                Object.keys(message).forEach(function (key) {
+                    message[key] = rewriteInbound(sponsor, message[key]);
+                });
+                return message;
+
+            } else {
+                var result = {};
+                Object.keys(message).forEach(function (key) {
+                    result[key] = rewriteInbound(sponsor, message[key]);
+                });
+                return result;
+
+            }
+        }
+
+        assert.ok(typeof message === 'function');
+
+        // check if message itself is an inboundProxy that should be replaced
+        var index = inboundProxies.indexOf(message);
+        if (index >= 0) {
+            // substitute the proxied actor for the proxy
+            return inboundProxied[index];
+        }
+
+        // message is an outside actor and should be replaced
+        var outboundProxyBeh = outboundProxy(message);
+        var proxy = sponsor(outboundProxyBeh);
+        outboundProxies.push(proxy);
+        outboundProxied.push(message);
+
+        return proxy;
+    };
+
+    var rewriteOutbound = function rewriteOutbound(sponsor, message) {
+        if (isUndefinedOrNull(message)) {
+            return message;
+        }
+
+        if (typeof message === 'string' || typeof message == 'number') {
+            return message;
+        }
+
+        if (Array.isArray(message)) {
+            for (var i = 0; i < message.length; i++) {
+                message.splice(i, 1, rewriteOutbound(sponsor, message[i]));
+            }
+            return message;
+        }
+
+        if (typeof message === 'object') {
+            var rewriteByCopy = false;
+            if (Object.isFrozen(message)) {
+                rewriteByCopy = true;
+            }
+
+            if (!rewriteByCopy) {
+                Object.keys(message).forEach(function (key) {
+                    message[key] = rewriteOutbound(sponsor, message[key]);
+                });
+                return message;
+            } else {
+                var result = {};
+                Object.keys(message).forEach(function (key) {
+                    result[key] = rewriteOutbound(sponsor, message[key]);
+                });
+                return result;
+            }
+        }
+
+        assert.ok(typeof message === 'function');
+
+        // check if message itself is an outboundProxy that should be replaced
+        var index = outboundProxies.indexOf(message);
+        if (index >= 0) {
+            // substitute the proxied actor for the proxy
+            return outboundProxied[index];
+        }
+
+        // message is an inside actor and should be replaced
+        var inboundProxyBeh = inboundProxy(message);
+        var proxy = sponsor(inboundProxyBeh);
+        inboundProxies.push(proxy);
+        inboundProxied.push(message);
+
+        return proxy;
+    };
 
     var revokeBeh = function revokeBeh(customer) {
         var revokeProxyBeh;
@@ -47,14 +165,45 @@ membrane.behaviors = function behaviors() {
         customer();
     };
 
-    var proxy = function proxy(actor) {
-        var capabilities = revocable.proxy(actor);
-        revokeBehList.push(capabilities.revokeBeh);
-        return capabilities.proxyBeh;
+    var inboundProxy = function inboundProxy(actor) {
+        var proxyBeh = function proxyBeh(message) {
+            // because of bootstrapping needs, an inbound proxy could be created
+            // external to the membrane itself
+            // therefore, we have to make sure that we are tracking this 
+            // proxy instance as well as the actor that it proxies
+            if (inboundProxies.indexOf(this.self) < 0) {
+                inboundProxies.push(this.self);
+                inboundProxied.push(actor);
+            }
+
+            // proxy message contents and forward if proxy isn't revoked
+            actor && actor(rewriteInbound(this.sponsor, message));
+        };
+
+        var revokeBeh = function revokeBeh(customer) {
+            actor = null; // crash proxy
+        };
+
+        revokeBehList.push(revokeBeh);
+        return proxyBeh;
+    };
+
+    var outboundProxy = function outboundProxy(actor) {
+        var proxyBeh = function proxyBeh(message) {
+            // proxy message contents and forward if proxy isn't revoked
+            actor && actor(rewriteOutbound(this.sponsor, message));
+        };
+
+        var revokeBeh = function revokeBeh(customer) {
+            actor = null; // crash proxy
+        };
+
+        revokeBehList.push(revokeBeh);
+        return proxyBeh;
     };
 
     return {
-        proxy: proxy,
+        proxy: inboundProxy,
         revokeBeh: revokeBeh
     };
 };

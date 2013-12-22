@@ -134,3 +134,145 @@ test.factory['revoked membrane should not pass message to proxied actor'] = func
     test.ok(tracing.eventLoop({fail: ignore}));
     test.done();
 };
+
+test.behaviors['external reference should be proxied when inbound'] = function (test) {
+    test.expect(2);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneBehs = membrane.behaviors();
+
+    var externalRef = sponsor(function () {});
+
+    var confined = sponsor(function (message) {
+        test.notStrictEqual(message.external, externalRef);
+    });
+
+    var proxy = sponsor(membraneBehs.proxy(confined));
+    proxy({external: externalRef});
+
+    test.ok(tracing.eventLoop());
+    test.done();
+};
+
+test.factory['external reference should be proxied when inbound'] = function (test) {
+    test.expect(3);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneCaps = membrane.factory(sponsor);
+
+    var externalRef = sponsor(function () {});
+
+    var confined = sponsor(function (message) {
+        test.notStrictEqual(message.external, externalRef);
+    });
+
+    var sendExternalRefBeh = function sendExternalRefBeh(proxies) {
+        test.ok(true); // proxies were created
+        var proxy = proxies[0];
+        proxy({external: externalRef});        
+    };
+
+    membraneCaps.proxy({
+        customer: sponsor(sendExternalRefBeh), 
+        actors: [confined]
+    });
+
+    test.ok(tracing.eventLoop());
+    test.done();
+};
+
+test.behaviors['internal reference should be proxied when outbound'] = function (test) {
+    test.expect(2);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneBehs = membrane.behaviors();
+
+    var internalRef = sponsor(function () {});
+
+    var confined = sponsor(function (customer) {
+        customer(internalRef);
+    });
+
+    var externalCust = sponsor(function (internal) {
+        test.notStrictEqual(internal, internalRef);
+    });
+
+    var proxy = sponsor(membraneBehs.proxy(confined));
+    proxy(externalCust);
+
+    test.ok(tracing.eventLoop());
+    test.done();
+};
+
+test.factory['internal reference should be proxied when outbound'] = function (test) {
+    test.expect(3);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneCaps = membrane.factory(sponsor);
+
+    var internalRef = sponsor(function () {});
+
+    var confined = sponsor(function (customer) {
+        customer(internalRef);
+    });
+
+    var externalCust = sponsor(function (internal) {
+        test.notStrictEqual(internal, internalRef);
+    });
+
+    var sendCustomerBeh = function sendCustomerBeh(proxies) {
+        test.ok(true); // proxies were created
+        var proxy = proxies[0];
+        proxy(externalCust);        
+    };
+
+    membraneCaps.proxy({
+        customer: sponsor(sendCustomerBeh), 
+        actors: [confined]
+    });
+
+    test.ok(tracing.eventLoop());
+    test.done();
+};
+
+test.behaviors['internal proxy reference should be rewritten with internal reference when inbound'] = function (test) {
+    test.expect(2);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneBehs = membrane.behaviors();
+
+    var confined = sponsor(function (self) {
+        test.strictEqual(this.self, self);
+    });
+
+    var proxy = sponsor(membraneBehs.proxy(confined));
+    proxy(proxy);
+
+    test.ok(tracing.eventLoop());
+    test.done();
+};
+
+test.factory['internal proxy reference should be rewritten with internal reference when inbound'] = function (test) {
+    test.expect(3);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneCaps = membrane.factory(sponsor);
+
+    var confined = sponsor(function (self) {
+        test.strictEqual(this.self, self);
+    });
+
+    var sendConfinedBeh = function sendConfinedBeh(proxies) {
+        test.ok(true); // proxies were created
+        var proxy = proxies[0];
+        proxy(proxy);        
+    };
+
+    membraneCaps.proxy({
+        customer: sponsor(sendConfinedBeh), 
+        actors: [confined]
+    });
+
+    test.ok(tracing.eventLoop());
+    test.done();
+};
