@@ -111,7 +111,7 @@ membrane.behaviors = function behaviors() {
             return inboundProxied[index];
         }
 
-        // check if message is an already proxied inner actor
+        // check if message is an already proxied external actor
         index = outboundProxied.indexOf(message);
         if (index >= 0) {
             // substitute existing proxy for the actor
