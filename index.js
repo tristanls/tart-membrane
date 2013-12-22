@@ -93,6 +93,13 @@ membrane.behaviors = function behaviors() {
             return inboundProxied[index];
         }
 
+        // check if message is an already proxied inner actor
+        index = outboundProxied.indexOf(message);
+        if (index >= 0) {
+            // substitute existing proxy for the actor
+            return outboundProxies[index];
+        }
+
         // message is an outside actor and should be replaced
         var outboundProxyBeh = outboundProxy(message);
         var proxy = sponsor(outboundProxyBeh);
@@ -145,6 +152,13 @@ membrane.behaviors = function behaviors() {
         if (index >= 0) {
             // substitute the proxied actor for the proxy
             return outboundProxied[index];
+        }
+
+        // check if message is an already proxied inner actor
+        index = inboundProxied.indexOf(message);
+        if (index >= 0) {
+            // substitute existing proxy for the actor
+            return inboundProxies[index];
         }
 
         // message is an inside actor and should be replaced

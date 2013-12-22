@@ -181,6 +181,70 @@ test.factory['external reference should be proxied when inbound'] = function (te
     test.done();
 };
 
+test.behaviors['already proxied external reference should be recognized and substituted with existing proxy'] = function (test) {
+    test.expect(4);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneBehs = membrane.behaviors();
+
+    var externalRef = sponsor(function () {});
+
+    var confined = sponsor(function (external) {
+        test.notStrictEqual(external, externalRef);
+        this.behavior = function (message) {
+            // second time expect *the same* external reference
+            test.strictEqual(message, external);
+        };
+    });
+
+    var proxy = sponsor(membraneBehs.proxy(confined));
+
+    proxy(externalRef);
+    test.ok(tracing.eventLoop());
+
+    proxy(externalRef);
+    test.ok(tracing.eventLoop());
+
+    test.done();
+};
+
+test.factory['already proxied external reference should be recognized and substituted with existing proxy'] = function (test) {
+    test.expect(5);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneCaps = membrane.factory(sponsor);
+
+    var externalRef = sponsor(function () {});
+
+    var confined = sponsor(function (external) {
+        test.notStrictEqual(external, externalRef);
+        this.behavior = function (message) {
+            // second time expect *the same* external reference
+            test.strictEqual(message, external);
+        };
+    });
+
+    var proxy;
+
+    var sendExternalBeh = function sendExternalBeh(proxies) {
+        test.ok(true); // proxies were created
+        proxy = proxies[0];
+        proxy(externalRef);        
+    };
+
+    membraneCaps.proxy({
+        customer: sponsor(sendExternalBeh), 
+        actors: [confined]
+    });
+
+    test.ok(tracing.eventLoop());
+
+    proxy(externalRef);
+    test.ok(tracing.eventLoop());
+
+    test.done();
+};
+
 test.behaviors['internal reference should be proxied when outbound'] = function (test) {
     test.expect(2);
     var tracing = tart.tracing();
@@ -270,6 +334,59 @@ test.factory['internal proxy reference should be rewritten with internal referen
 
     membraneCaps.proxy({
         customer: sponsor(sendConfinedBeh), 
+        actors: [confined]
+    });
+
+    test.ok(tracing.eventLoop());
+    test.done();
+};
+
+test.behaviors['already proxied internal reference should be recognized and substituted with existing proxy'] = function (test) {
+    test.expect(2);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneBehs = membrane.behaviors();
+
+    var confined = sponsor(function (customer) {
+        customer(this.self);
+    });
+
+    var proxy = sponsor(membraneBehs.proxy(confined));
+
+    var externalCust = sponsor(function (internal) {
+        test.strictEqual(internal, proxy);
+    });
+
+    proxy(externalCust);
+
+    test.ok(tracing.eventLoop());
+    test.done();
+};
+
+test.factory['already proxied internal reference should be recognized and substituted with existing proxy'] = function (test) {
+    test.expect(3);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneCaps = membrane.factory(sponsor);
+
+    var confined = sponsor(function (customer) {
+        customer(this.self);
+    });
+
+    var proxy;
+
+    var externalCust = sponsor(function (internal) {
+        test.strictEqual(internal, proxy);
+    });
+
+    var sendCustomerBeh = function sendCustomerBeh(proxies) {
+        test.ok(true); // proxies were created
+        proxy = proxies[0];
+        proxy(externalCust);        
+    };
+
+    membraneCaps.proxy({
+        customer: sponsor(sendCustomerBeh), 
         actors: [confined]
     });
 
