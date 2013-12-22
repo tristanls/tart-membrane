@@ -55,24 +55,36 @@ membrane.behaviors = function behaviors() {
             return message;
         }
 
-        if (Array.isArray(message)) {
-            for (var i = 0; i < message.length; i++) {
-                message.splice(i, 1, rewrite(sponsor, message[i]));
-            }
-            return message;
-        }
-
-        assert.ok(typeof message === 'object');
-
         var rewriteByCopy = false;
         if (Object.isFrozen(message)) {
             rewriteByCopy = true;
         }
+
+        if (Array.isArray(message)) {
+            if (!rewriteByCopy) {
+                for (var i = 0; i < message.length; i++) {
+                    message.splice(i, 1, rewrite(sponsor, message[i]));
+                }
+
+                return message;
+
+            } else {
+                var result = [];
+                message.forEach(function (element) {
+                    result.push(rewrite(sponsor, element));
+                });
+
+                return result;
+            }
+        }
+
+        assert.ok(typeof message === 'object');
         
         if (!rewriteByCopy) {
             Object.keys(message).forEach(function (key) {
                 message[key] = rewrite(sponsor, message[key]);
             });
+
             return message;
 
         } else {
@@ -80,8 +92,8 @@ membrane.behaviors = function behaviors() {
             Object.keys(message).forEach(function (key) {
                 result[key] = rewrite(sponsor, message[key]);
             });
-            return result;
 
+            return result;
         }
     };
 
