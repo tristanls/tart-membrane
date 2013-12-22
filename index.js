@@ -168,10 +168,10 @@ membrane.behaviors = function behaviors() {
 
     var inboundProxy = function inboundProxy(actor) {
         var proxyBeh = function proxyBeh(message) {
-            // because of bootstrapping needs, an inbound proxy could be created
-            // external to the membrane itself
-            // therefore, we have to make sure that we are tracking this 
-            // proxy instance as well as the actor that it proxies
+            // Because the inbound proxy can be created outside of the membrane
+            // when bootstrapping, we have to make sure that the membrane is
+            // tracking this particular proxy instance as well as the actor that
+            // it proxies. If not, start tracking.
             if (inboundProxies.indexOf(this.self) < 0) {
                 inboundProxies.push(this.self);
                 inboundProxied.push(actor);
@@ -191,6 +191,11 @@ membrane.behaviors = function behaviors() {
 
     var outboundProxy = function outboundProxy(actor) {
         var proxyBeh = function proxyBeh(message) {
+            // Because outbound proxies are only created within the membrane,
+            // they are guaranteed to already be tracked by the membrane
+            // and the check similar to the one in the inboundProxy is not
+            // necessary.
+
             // proxy message contents and forward if proxy isn't revoked
             actor && actor(rewriteOutbound(this.sponsor, message));
         };
