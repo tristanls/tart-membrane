@@ -299,7 +299,7 @@ test.factory['internal reference should be proxied when outbound'] = function (t
     test.done();
 };
 
-test.behaviors['internal proxy reference should be rewritten with internal reference when inbound'] = function (test) {
+test.behaviors['internal proxy reference should be created within the membrane if it does not exist (bootstrap asymmetry)'] = function (test) {
     test.expect(2);
     var tracing = tart.tracing();
     var sponsor = tracing.sponsor;
@@ -316,7 +316,7 @@ test.behaviors['internal proxy reference should be rewritten with internal refer
     test.done();
 };
 
-test.factory['internal proxy reference should be rewritten with internal reference when inbound'] = function (test) {
+test.factory['internal proxy reference should be created within the membrane if it does not exist (bootstrap asymmetry)'] = function (test) {
     test.expect(3);
     var tracing = tart.tracing();
     var sponsor = tracing.sponsor;
