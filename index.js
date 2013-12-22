@@ -38,12 +38,13 @@ membrane.behaviors = function behaviors() {
 
     var revokeBehList = [];
 
-    var revokeBeh = function revokeBeh(message) {
+    var revokeBeh = function revokeBeh(customer) {
         var revokeProxyBeh;
         while (revokeProxyBeh = revokeBehList.shift()) {
             // create and then trigger revoke actors
             this.sponsor(revokeProxyBeh)();
         };
+        customer();
     };
 
     var proxy = function proxy(actor) {

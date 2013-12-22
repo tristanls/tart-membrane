@@ -75,3 +75,62 @@ test.factory['proxy created by membrane should pass message to proxied actor'] =
     test.ok(tracing.eventLoop());
     test.done();
 };
+
+test.behaviors['revoked membrane should not pass message to proxied actor'] = function (test) {
+    test.expect(2);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneBehs = membrane.behaviors();
+
+    var confined = sponsor(function (message) {
+        test.ok(false, 'should not receive message');
+    });
+
+    var proxy = sponsor(membraneBehs.proxy(confined));
+    var revoke = sponsor(membraneBehs.revokeBeh);
+
+    var ackCustomerBeh = function ackCustomerBeh(message) {
+        test.ok(true); // revoke was acked
+        proxy('this message should not reach confined actor');
+    };
+
+    var ackCustomer = sponsor(ackCustomerBeh);
+    revoke(ackCustomer);
+
+    var ignore = function () {};
+
+    test.ok(tracing.eventLoop({fail: ignore}));
+    test.done();
+};
+
+test.factory['revoked membrane should not pass message to proxied actor'] = function (test) {
+    test.expect(3);
+    var tracing = tart.tracing();
+    var sponsor = tracing.sponsor;
+    var membraneCaps = membrane.factory(sponsor);
+
+    var confined = sponsor(function (message) {
+        test.ok(false, 'should not receive message');
+    });
+
+    var revokeStepBeh = function revokeStepBeh(proxies) {
+        test.ok(true); // proxies were created
+        var proxy = proxies[0];
+        membraneCaps.revoke(this.self);
+        this.behavior = tryProxy(proxy);
+    };
+
+    var tryProxy = function tryProxy(proxy) {
+        return function tryProxyBeh(message) {
+            test.ok(true); // revoke was acked
+            proxy('this message should not reach confined actor');
+        };
+    };
+
+    membraneCaps.proxy({customer: sponsor(revokeStepBeh), actors: [confined]});
+
+    var ignore = function () {};
+
+    test.ok(tracing.eventLoop({fail: ignore}));
+    test.done();
+};
