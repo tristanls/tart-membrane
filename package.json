@@ -9,8 +9,8 @@
   },
   "main": "index.js",
   "devDependencies": {
-    "nodeunit": "0.8.1",
-    "tart-tracing": "0.1.4"
+    "nodeunit": "0.8.2",
+    "tart-tracing": "0.1.5"
   },
   "dependencies": {
     "tart": "0.1.5"
