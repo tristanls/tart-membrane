@@ -38,6 +38,57 @@ var isUndefinedOrNull = function isUndefinedOrNull(value) {
     return value === null || value === undefined;
 };
 
+var rewriteNonFunctions = function rewriteNonFunctions(sponsor, rewrite, message) {
+    if (isUndefinedOrNull(message)) {
+        return message;
+    }
+
+    if (typeof message === 'string' || typeof message === 'number') {
+        return message;
+    }
+
+    var rewriteByCopy = false;
+    if (Object.isFrozen(message)) {
+        rewriteByCopy = true;
+    }
+
+    if (Array.isArray(message)) {
+        if (!rewriteByCopy) {
+            for (var i = 0; i < message.length; i++) {
+                message.splice(i, 1, rewrite(sponsor, message[i]));
+            }
+
+            return message;
+
+        } else {
+            var result = [];
+            message.forEach(function (element) {
+                result.push(rewrite(sponsor, element));
+            });
+
+            return result;
+        }
+    }
+
+    assert.ok(typeof message === 'object');
+    
+    if (!rewriteByCopy) {
+        Object.keys(message).forEach(function (key) {
+            message[key] = rewrite(sponsor, message[key]);
+        });
+
+        return message;
+
+    } else {
+        var result = {};
+        Object.keys(message).forEach(function (key) {
+            result[key] = rewrite(sponsor, message[key]);
+        });
+
+        return result;
+    }
+};
+
 membrane.behaviors = function behaviors() {
 
     var inboundProxies = []; // proxies for actors "inside"
@@ -45,57 +96,6 @@ membrane.behaviors = function behaviors() {
     var outboundProxies = []; // proxies for actors "outside"
     var outboundProxied = []; // the "outside" actors that have a proxy
     var revokeBehList = [];
-
-    var rewriteNonFunctions = function rewriteNonFunctions(sponsor, rewrite, message) {
-        if (isUndefinedOrNull(message)) {
-            return message;
-        }
-
-        if (typeof message === 'string' || typeof message === 'number') {
-            return message;
-        }
-
-        var rewriteByCopy = false;
-        if (Object.isFrozen(message)) {
-            rewriteByCopy = true;
-        }
-
-        if (Array.isArray(message)) {
-            if (!rewriteByCopy) {
-                for (var i = 0; i < message.length; i++) {
-                    message.splice(i, 1, rewrite(sponsor, message[i]));
-                }
-
-                return message;
-
-            } else {
-                var result = [];
-                message.forEach(function (element) {
-                    result.push(rewrite(sponsor, element));
-                });
-
-                return result;
-            }
-        }
-
-        assert.ok(typeof message === 'object');
-        
-        if (!rewriteByCopy) {
-            Object.keys(message).forEach(function (key) {
-                message[key] = rewrite(sponsor, message[key]);
-            });
-
-            return message;
-
-        } else {
-            var result = {};
-            Object.keys(message).forEach(function (key) {
-                result[key] = rewrite(sponsor, message[key]);
-            });
-
-            return result;
-        }
-    };
 
     var rewriteInbound = function rewriteInbound(sponsor, message) {
         if (typeof message !== 'function') {
