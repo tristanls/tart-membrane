@@ -46,7 +46,7 @@ membrane.behaviors = function behaviors() {
     var outboundProxied = []; // the "outside" actors that have a proxy
     var revokeBehList = [];
 
-    var rewriteInbound = function rewriteInbound(sponsor, message) {
+    var rewriteNonFunctions = function rewriteNonFunctions(sponsor, rewrite, message) {
         if (isUndefinedOrNull(message)) {
             return message;
         }
@@ -57,31 +57,37 @@ membrane.behaviors = function behaviors() {
 
         if (Array.isArray(message)) {
             for (var i = 0; i < message.length; i++) {
-                message.splice(i, 1, rewriteInbound(sponsor, message[i]));
+                message.splice(i, 1, rewrite(sponsor, message[i]));
             }
             return message;
         }
 
-        if (typeof message === 'object') {
-            var rewriteByCopy = false;
-            if (Object.isFrozen(message)) {
-                rewriteByCopy = true;
-            }
-            
-            if (!rewriteByCopy) {
-                Object.keys(message).forEach(function (key) {
-                    message[key] = rewriteInbound(sponsor, message[key]);
-                });
-                return message;
+        assert.ok(typeof message === 'object');
 
-            } else {
-                var result = {};
-                Object.keys(message).forEach(function (key) {
-                    result[key] = rewriteInbound(sponsor, message[key]);
-                });
-                return result;
+        var rewriteByCopy = false;
+        if (Object.isFrozen(message)) {
+            rewriteByCopy = true;
+        }
+        
+        if (!rewriteByCopy) {
+            Object.keys(message).forEach(function (key) {
+                message[key] = rewrite(sponsor, message[key]);
+            });
+            return message;
 
-            }
+        } else {
+            var result = {};
+            Object.keys(message).forEach(function (key) {
+                result[key] = rewrite(sponsor, message[key]);
+            });
+            return result;
+
+        }
+    };
+
+    var rewriteInbound = function rewriteInbound(sponsor, message) {
+        if (typeof message !== 'function') {
+            return rewriteNonFunctions(sponsor, rewriteInbound, message);
         }
 
         assert.ok(typeof message === 'function');
@@ -110,39 +116,8 @@ membrane.behaviors = function behaviors() {
     };
 
     var rewriteOutbound = function rewriteOutbound(sponsor, message) {
-        if (isUndefinedOrNull(message)) {
-            return message;
-        }
-
-        if (typeof message === 'string' || typeof message == 'number') {
-            return message;
-        }
-
-        if (Array.isArray(message)) {
-            for (var i = 0; i < message.length; i++) {
-                message.splice(i, 1, rewriteOutbound(sponsor, message[i]));
-            }
-            return message;
-        }
-
-        if (typeof message === 'object') {
-            var rewriteByCopy = false;
-            if (Object.isFrozen(message)) {
-                rewriteByCopy = true;
-            }
-
-            if (!rewriteByCopy) {
-                Object.keys(message).forEach(function (key) {
-                    message[key] = rewriteOutbound(sponsor, message[key]);
-                });
-                return message;
-            } else {
-                var result = {};
-                Object.keys(message).forEach(function (key) {
-                    result[key] = rewriteOutbound(sponsor, message[key]);
-                });
-                return result;
-            }
+        if (typeof message !== 'function') {
+            return rewriteNonFunctions(sponsor, rewriteOutbound, message);
         }
 
         assert.ok(typeof message === 'function');
